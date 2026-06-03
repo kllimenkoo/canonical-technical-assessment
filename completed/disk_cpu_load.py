@@ -1,6 +1,16 @@
 import os
 import stat
 import argparse
+from dataclasses import dataclass
+
+
+@dataclass
+class CPULoadResult:
+    start_total: int
+    end_total: int
+    diff_total: int
+    diff_used: int
+    cpu_load: int
 
 
 def validate_block_device(path: str) -> str:
@@ -53,3 +63,26 @@ def get_params() -> argparse.Namespace:
     args.device_filename = validate_block_device(args.device_filename)
 
     return args
+
+
+def compute_cpu_load(start_use: list[int], end_use: list[int]) -> CPULoadResult:
+    """Compute CPU load percentage between two /proc/stat snapshots."""
+    diff_idle = end_use[3] - start_use[3]
+
+    start_total = sum(start_use)
+    end_total = sum(end_use)
+
+    diff_total = end_total - start_total
+    diff_used = diff_total - diff_idle
+
+    cpu_load = 0
+    if diff_total != 0:
+        cpu_load = (diff_used * 100) // diff_total
+
+    return CPULoadResult(
+        start_total=start_total,
+        end_total=end_total,
+        diff_total=diff_total,
+        diff_used=diff_used,
+        cpu_load=cpu_load,
+    )
