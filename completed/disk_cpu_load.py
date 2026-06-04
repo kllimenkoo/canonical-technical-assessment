@@ -2,6 +2,7 @@ import os
 import stat
 import argparse
 from dataclasses import dataclass
+import subprocess
 
 
 @dataclass
@@ -65,7 +66,54 @@ def get_params() -> argparse.Namespace:
     return args
 
 
-def compute_cpu_load(start_use: list[int], end_use: list[int]) -> CPULoadResult:
+def get_cpu_stats() -> list[int]:
+    """Read and return current CPU statistics from /proc/stat."""
+    with open("/proc/stat", "r") as f:
+        cpu_line = f.readline()
+
+    return [int(i) for i in cpu_line.split()[1:]]
+
+
+def read_disk(
+    device: str, xfer: int, verbose: bool
+) -> tuple[list[int], list[int]]:
+    """Flush cache, read disk, return CPU stat snapshots."""
+    try:
+        subprocess.run(["blockdev", "--flushbufs", device], check=True)
+    except subprocess.CalledProcessError:
+        raise SystemExit(1)
+
+    if verbose:
+        print("Beginning disk read....")
+
+    start_use = get_cpu_stats()
+    try:
+        subprocess.run(
+            [
+                "dd",
+                f"if={device}",
+                "of=/dev/null",
+                "bs=1048576",
+                f"count={xfer}",
+            ],
+            check=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+    except subprocess.CalledProcessError:
+        raise SystemExit(1)
+
+    end_use = get_cpu_stats()
+
+    if verbose:
+        print("Disk read complete!")
+
+    return start_use, end_use
+
+
+def compute_cpu_load(
+    start_use: list[int], end_use: list[int]
+) -> CPULoadResult:
     """Compute CPU load percentage between two /proc/stat snapshots."""
     diff_idle = end_use[3] - start_use[3]
 
