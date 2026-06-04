@@ -38,14 +38,19 @@ def get_params() -> argparse.Namespace:
         type=int,
         default=30,
         metavar="<load>",
-        help="The maximum acceptable CPU load, as a percentage. Defaults to 30.",
+        help=(
+            "The maximum acceptable CPU load, as a percentage. Defaults to 30."
+        ),
     )
     parser.add_argument(
         "--xfer",
         type=int,
         default=4096,
         metavar="<mebibytes>",
-        help="The amount of data to read from the disk, in mebibytes. Defaults to 4096 (4 GiB).",
+        help=(
+            "The amount of data to read from the disk, in mebibytes. "
+            "Defaults to 4096 (4 GiB)."
+        ),
     )
     parser.add_argument(
         "--verbose",
@@ -58,7 +63,10 @@ def get_params() -> argparse.Namespace:
         nargs="?",
         default="/dev/sda",
         metavar="device-filename",
-        help='Whole-disk device path (e.g. "sda" or "/dev/sda"). Defaults to /dev/sda.',
+        help=(
+            'Whole-disk device path (e.g. "sda" or "/dev/sda"). '
+            "Defaults to /dev/sda."
+        ),
     )
     args = parser.parse_args()
     args.device_filename = validate_block_device(args.device_filename)
