@@ -31,7 +31,7 @@ def validate_block_device(path: str) -> str:
 
 def get_params() -> argparse.Namespace:
     """Parse and validate command-line arguments."""
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(allow_abbrev=False)
 
     parser.add_argument(
         "--max-load",
