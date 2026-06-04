@@ -7,6 +7,7 @@ import subprocess
 
 @dataclass
 class CPULoadResult:
+    """Stores the results of a CPU load computation."""
     start_total: int
     end_total: int
     diff_total: int
