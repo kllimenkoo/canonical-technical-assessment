@@ -134,3 +134,35 @@ def compute_cpu_load(
         diff_used=diff_used,
         cpu_load=cpu_load,
     )
+
+
+def print_result(
+    cpu_load_result: CPULoadResult, args: argparse.Namespace
+) -> None:
+    """Prints the CPU load result."""
+    if args.verbose:
+        print(f"Start CPU time = {cpu_load_result.start_total}")
+        print(f"End CPU time = {cpu_load_result.end_total}")
+        print(f"CPU time used = {cpu_load_result.diff_used}")
+        print(f"Total elapsed time = {cpu_load_result.diff_total}")
+
+    print(f"Detected disk read CPU load is {cpu_load_result.cpu_load}")
+
+
+if __name__ == "__main__":
+    args = get_params()
+    print(
+        f"Testing CPU load when reading {args.xfer} MiB "
+        f"from {args.device_filename}"
+    )
+    print(f"Maximum acceptable CPU load is {args.max_load}")
+
+    start_use, end_use = read_disk(
+        args.device_filename, args.xfer, args.verbose
+    )
+    cpu_load_result = compute_cpu_load(start_use, end_use)
+    print_result(cpu_load_result, args)
+
+    if cpu_load_result.cpu_load > args.max_load:
+        print("*** DISK CPU LOAD TEST HAS FAILED! ***")
+        raise SystemExit(1)
