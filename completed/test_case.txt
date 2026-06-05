@@ -1,0 +1,138 @@
+Test Case: Testing SSH connectivity using Password and Key based auth
+
+Objective:
+  - Verify that a target machine accepts SSH connections from source machine
+    using both password and key based authentication methods.
+
+Prerequisites:
+
+- Hardware:
+  - Source machine - the machine you are connecting from.
+  - Target machine - the machine you are connecting to.
+
+- Software:
+  - openssh-server installed on the target machine.
+      To verify, run the following command:
+        dpkg -l openssh-server
+      Expected output:
+        ii openssh-server <version> <architecture> <description>
+      If the package is not listed or shows un, run the following command:
+        sudo apt install openssh-server
+      Verify sshd is running with the following command:
+        sudo systemctl status sshd
+      If not running, run the following command:
+        sudo systemctl start sshd
+  - openssh-client installed on the source machine.
+      To verify, run the following command:
+        ssh -V
+      Expected output: 
+        OpenSSH_X.X ..., OpenSSL_X.X ...
+      If not installed, run the following command:
+        sudo apt install openssh-client
+  - A user account on the target machine with a known password.
+
+- Network:
+  - Source machine can ping the target machine with ping <target_ip>, with replies and no packet loss.
+  - SSH service is assumed to be listening on the default port 22 on the target machine.
+
+Common Fail Criteria:
+  - Network is unreachable - you have no internet or no active network adapter, or broken gateway.
+  - No route to host - there is no route to the target machine IP, could be misconfigured subnet,
+    or the target machine is on an unreachable network.
+  - Connection refused - ssh service is stopped on target machine
+    or ssh port 22 may not be listening, or target machine uses different port for ssh connections.
+  - Connection timed out - most commonly firewall silently dropping packets.
+
+Note:
+  - If you do not have physical access to the target machine:
+      Test 2 depends on Test 1 passing first.
+      Ensure Test 1 is completed successfully before proceeding to Test 2.
+  - If you do have physical access to target machine:
+      You can manually copy the public key to "~/.ssh/authorized_keys" on the target,
+      skipping the Test 1 entirely.
+      Ensure correct permissions with following commands:
+        chmod 700 ~/.ssh
+        chmod 600 ~/.ssh/authorized_keys
+
+Test 1: Password-based authentication
+
+Setup:
+  - Ensure the "PasswordAuthentication yes" is set in "/etc/ssh/sshd_config" on the target machine.
+    If changed, restart sshd with the following command:
+      sudo systemctl restart sshd
+
+Steps:
+
+1) On source run the following command:
+    ssh -o PreferredAuthentications=password <user>@<target_ip>
+  - Expected result: Prompted for password.
+
+2) Enter the correct password.
+  - Expected result: Shell prompt of target machine appears.
+
+3) Run the following command:
+    whoami
+  - Expected result: Returns <user> confirming correct login and working commands.
+
+4) Run the following command:
+    exit
+    or press "Ctrl+d" on your keyboard.
+  - Expected result: Session closes gracefully.
+
+Pass Criteria:
+  - Successfully connected to the target machine via password.
+  - Correct user shell prompt is displayed on the target machine.
+  - Commands execute on the target machine.
+
+Fail Criteria:
+  - Permission denied - wrong password or PasswordAuthentication is disabled.
+
+Test 2: Key-based authentication
+
+Setup:
+
+- Ensure the "PubkeyAuthentication yes" is set in "/etc/ssh/sshd_config" on the target machine.
+    If changed, restart sshd with the following command:
+      sudo systemctl restart sshd
+- Ensure an SSH key pair exists on the source machine.
+    To check, run:
+      ls ~/.ssh/*.pub
+    If no key pair is found, generate one:
+      ssh-keygen -t <type_of_encryption> -C "test_key"
+    Accept the default file location. Set a passphrase or leave empty.
+    Note: Recommended key types are ed25519 (preferred) or rsa (use -b 4096)
+          Example:
+            ssh-keygen -t ed25519 -C test_key
+          Use rsa only if the target machine doesn't support ed25519.
+    Then copy the public key to the target:
+      ssh-copy-id <user>@<target_ip>
+      Enter the password for this user.
+    Note: ssh-copy-id requires password authentication to be enabled on the target machine.
+          If password auth is disabled, use the manual method described in Prerequisites.
+
+Steps:
+
+1) On source run the following command:
+    ssh <user>@<target_ip>
+  - Expected result: Passphrase prompt appears if set, then shell prompt.
+    No remote user password prompt.
+
+2) Run the following command:
+    whoami
+  - Expected result: Returns <user> confirming correct login and working commands.
+
+3) Run the following command:
+    exit
+    or press "Ctrl+d" on your keyboard.
+  - Expected result: Session closes gracefully.
+
+Pass Criteria:
+  - Connection is successful - passphrase prompt appears if set,
+    then shell prompt, with no remote user password prompt.
+  - Commands execute on the target machine.
+
+Fail Criteria:
+  - Still prompted for password - public key was not copied correctly.
+  - Permission denied (pubkey) - the target machine doesn't have your public key
+    and has "PasswordAuthentication no" in "/etc/ssh/sshd_config",
+    or ~/.ssh or ~/.ssh/authorized_keys have wrong permissions on the target machine.
